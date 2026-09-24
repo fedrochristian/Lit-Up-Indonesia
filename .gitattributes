@@ -1,0 +1,5 @@
+# Preserve binary deliverables; never normalize their line endings.
+*.pdf binary
+*.jpg binary
+*.png binary
+*.ico binary

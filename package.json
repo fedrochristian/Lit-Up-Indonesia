@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "LITUP_PREVIEW=1 next dev --webpack --hostname 127.0.0.1 --port 3011",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsc --outDir tmp/site-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck lib/catalog.ts lib/workspace-store.ts lib/local-request.ts && node --test tests/workspace.test.cjs"
   },
   "dependencies": {
     "next": "16.3.6",

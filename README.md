@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lit Up
 
-## Getting Started
+A working local education website based on the [PRD](docs/PRD.md) and [brand direction](output/pdf/lit-up-brand-direction.pdf). Designed for self-directed learners with the original @litup.id logo, navy/yellow palette, and Indonesian interface.
 
-First, run the development server:
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev:local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open **http://127.0.0.1:3011**. The preview binds to loopback only, using a separate `.next-preview` directory so the earlier Cursor server is not interrupted. Webpack avoids a Turbopack process/port restriction in this environment. Requires Node 20.9+; developed with Node 26.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Working features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Seven curated resources: video, courses, MOOCs, books, and audiobook. Combined topic, format, access, level, language, and text filters.
+- Keyboard-operable detail dialogs with provider links, access conditions, and local issue reports. Outbound clicks never mark completion.
+- Two four-step beginner paths: progress, explicit completion/undo, pause/resume, session estimates, and optional reflection notes.
+- Goals/preferences, transparent rule-based path suggestions, bookmarks, and JSON export.
+- Server-persistent storage in `.local/workspace.json`, ignored by Git. Validated, serialized atomic writes; corrupt files are preserved rather than reset.
+- Optional server-side OpenAI tutor with visible context limitations, opt-in, request limits, and connection/error states.
+- Responsive desktop/mobile layouts. Original editorial card artwork, not publisher covers.
+- Previous Sparks journal preserved at `/journal`; original localStorage keys/data untouched. Browser storage is origin-specific: use the original hostname/port to see existing journal entries.
 
-## Learn More
+## Optional AI connection
 
-To learn more about Next.js, take a look at the following resources:
+Create `.env.local` with the variable names in `.env.example`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```dotenv
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=a_text_model_available_to_your_project
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Restart the local server. Never put credentials in `NEXT_PUBLIC_*` variables, commit them, or paste them into chat. Calls occur only after the learner opts in and presses Send. API usage can incur charges; set project spend limits.
 
-## Deploy on Vercel
+The integration follows [official OpenAI text-generation documentation](https://developers.openai.com/api/docs/guides/text), using Responses with `store: false`, a 30-second timeout, and a 5-request/minute local limit. The last seven messages, learner preferences, and editorial resource metadata are sent; full source content is not fetched. Responses are displayed as text, never executed as HTML. Conversations are held only in page memory. `store: false` does not guarantee zero provider-side retention.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Without configuration, the tutor shows “Belum terhubung”; no simulated answers are shown. Live paid API replies have not been tested with a real key.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Verification
+
+```bash
+npm test
+npx tsc --noEmit
+npm run build -- --webpack
+npm run lint
+```
+
+Tests cover catalog references, origin checks, input limits, validation, idempotency, concurrent persistence, pause/undo, and corruption preservation. Tests use separate temporary storage.
+
+The new education-app files pass lint. Full-project lint also finds two pre-existing `react-hooks/set-state-in-effect` errors in the preserved journal (`components/SparkForm.tsx`, `lib/use-sparks.ts`); these are not changed as part of the education build.
+
+## Local prototype boundaries
+
+This is a working implementation slice, **not the full production P0 release**. It is one shared local workspace, without accounts or cross-device sync. Do not expose it publicly. Host/origin checks reduce accidental cross-origin access but are not authentication and do not protect against local software.
+
+Before a public pilot: add authentication, per-user database isolation, durable user-level API limits, moderation/age/privacy decisions, account deletion, consent-based analytics, and a protected operator interface. Reports currently stay in the local JSON queue; no external team is notified.
+
+Maintain the catalog in `lib/catalog.ts`. There is no live ingestion or provider completion sync. Keep v1 paths immutable when adding versions; production upgrades need explicit acceptance and persisted plan snapshots. Initial topics and English-language resources are prototype choices, not final product commitments. Lit Up is not affiliated with linked providers, and access terms can change.
+
+## Project context
+
+- [Ideation / product brief](docs/product-brief.md)
+- [PRD source](docs/PRD.md) · [PRD PDF](output/pdf/lit-up-prd.pdf)
+- [Brand PDF](output/pdf/lit-up-brand-direction.pdf) · [Logo provenance](docs/brand-assets/README.md)
+
+The planning deliverables are unchanged.
