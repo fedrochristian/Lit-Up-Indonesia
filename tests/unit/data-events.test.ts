@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
+import { alertPayload } from "../../lib/alert-payload";
 import { deleteAccount } from "../../lib/deletion";
 import { CLIENT_EVENTS, EVENT_SCHEMAS, sanitizeEventProps } from "../../lib/events";
 import { accountHash, clientIp, ipHash } from "../../lib/hash";
@@ -121,5 +122,14 @@ describe("deletion orchestration", () => {
     }, undefined, () => new Date("2026-11-22T17:30:00Z"));
     assert.deepEqual(steps, ["delete_account_data:in_app", "auth:u1", 'deletion_done:{"method":"in_app"}:null']);
     assert.deepEqual(counts, { reference: "LU-DEL-000042", date: "2026-11-23", counts: { events: 3 } });
+  });
+});
+
+describe("operator alert webhook payload", () => {
+  test("Slack and Google Chat get {text}; Discord gets {content}", () => {
+    assert.deepEqual(alertPayload("https://hooks.slack.com/services/T/B/x", "hi"), { text: "hi" });
+    assert.deepEqual(alertPayload("https://chat.googleapis.com/v1/spaces/S/messages?key=k&token=t", "hi"), { text: "hi" });
+    assert.deepEqual(alertPayload("https://discord.com/api/webhooks/1/x", "hi"), { content: "hi" });
+    assert.deepEqual(alertPayload("https://evil-discord.com.example/x", "hi"), { text: "hi" });
   });
 });

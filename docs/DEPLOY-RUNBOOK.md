@@ -23,7 +23,7 @@ Set every variable in **both Preview and Production** in Vercel
 | `ALLOWLIST_EMAILS` | yes | Comma-separated, max 13: Fedro, Tri (test identity), Steve, Elon, Leo, Charlie, Peter, plus test accounts |
 | `NEXT_PUBLIC_SITE_URL` | yes | Production origin, e.g. `https://litup.id`. Previews use their own origin automatically. |
 | `PILOT_CAPS_LIFTED` | no | `false`. `true` switches to 100 messages/day per learner; the Rp5m hard stop still applies. |
-| `ALERT_WEBHOOK_URL` | no | Free incoming webhook (Slack/Discord/Google Chat) for the Rp4m alert. |
+| `ALERT_WEBHOOK_URL` | no | Free incoming webhook (Slack, Google Chat or Discord) for operator alerts. Setup in section 6. |
 | `ALERT_EMAIL_TO` | no | Recorded only; no email sender is wired (free route). See QA checklist. |
 | `MAX_OUTPUT_TOKENS` | no | 1024 |
 | `SHORT_RESPONSE_MAX_TOKENS` | no | 400 |
@@ -85,10 +85,11 @@ Set every variable in **both Preview and Production** in Vercel
 
 ## 4. Guruku safety text
 
-Guruku is closed (no model calls, no spend) until the merged LU-GURU-SAFETY text from
-Elon is pasted into `lib/guru/prompt-text.ts` (`GURU_PROMPT`: text, rule ID,
-`status: "final"`). The AI disclosure, hard-stop and refusal copy sit in the same file.
-No other file changes are needed; re-run `npm test` and `npm run preflight`.
+Elon's merged text (`LU-GURU-SAFETY-20261121`) is in `lib/guru/prompt-text.ts`
+(`GURU_PROMPT`, `status: "final"`), together with the AI disclosure, hard-stop and refusal
+copy. Any later wording change goes in that file only; re-run `npm test` and
+`npm run preflight`. Setting `status` back to `"pending"` closes Guruku (no model calls,
+no spend) without touching anything else.
 
 ## 5. Operating the pilot
 
@@ -98,4 +99,38 @@ No other file changes are needed; re-run `npm test` and `npm run preflight`.
 - Deletion requests outside the app:
   `npm run account:delete -- --email someone@example.com` (dry run with counts), then
   `--confirm`. Records a dated deletion log; cost aggregates stay without the account ID.
+  The script and the in-app confirmation both show the WIB date and a reference
+  (`LU-DEL-000123`, the `deletion_log` id) to quote back to the learner.
+- Metric 4 with `PILOT_CAPS_LIFTED=true`: nobody is in a trial, so each learner's first
+  28 Guruku calls (2 sessions x 14) are ledgered as `pilot_trial` and count as one trial
+  unit; later calls are `pilot`. `spend:status` reports the p95 over those units.
 - Hard stop at Rp5m: Guruku shows "Guruku sedang istirahat…"; Jelajahi and Belajarku keep working.
+
+## 6. Operator alerts (`ALERT_WEBHOOK_URL`, optional, free)
+
+Alerts are always written to the Vercel function log as `[ALERT] ...` (search the
+project's Logs for `[ALERT]`). They fire for: monthly spend crossing Rp4,000,000 (once
+per month) and any single Guruku call settling above the Rp100 reserve. The hard stop
+itself needs no alert: Guruku closes on its own.
+
+To also get them in a chat, create one incoming webhook and set its URL as
+`ALERT_WEBHOOK_URL` in Vercel (Production and Preview), then redeploy:
+
+- **Slack:** api.slack.com/apps > Create New App > From scratch > Incoming Webhooks > on >
+  Add New Webhook to Workspace > pick a private channel. URL starts `https://hooks.slack.com/services/`.
+- **Google Chat:** in a space, Apps & integrations > Webhooks > Add webhook. URL starts
+  `https://chat.googleapis.com/v1/spaces/`. (Needs a Google Workspace account.)
+- **Discord:** Server Settings > Integrations > Webhooks > New Webhook > Copy Webhook URL.
+  URL starts `https://discord.com/api/webhooks/`.
+
+Slack and Google Chat receive `{"text": ...}`, Discord `{"content": ...}`
+(`lib/alert-payload.ts`). Microsoft Teams Workflows webhooks need an Adaptive Card body and
+are not supported. The URL is a secret: set it only in Vercel, never in the repo. A failed
+or non-2xx webhook is logged as `[ALERT] webhook ...` and does not affect the learner.
+Test it once with:
+
+```bash
+curl -X POST -H 'content-type: application/json' -d '{"text":"Lit Up alert test"}' "$ALERT_WEBHOOK_URL"
+```
+
+(use `{"content":"Lit Up alert test"}` for Discord).
