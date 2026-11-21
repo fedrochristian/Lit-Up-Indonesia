@@ -21,6 +21,7 @@ Tick each item with name, date and evidence. Unticked items block the production
 - [ ] **Condition (c): allowlist on the preview URL.** (1) An off-allowlist email on `/masuk`
   shows the neutral message and **no email arrives**; Supabase Auth → Users shows no new user.
   (2) Tri's test identity receives a link, opens it, lands on Jelajahi.
+  (Automated equivalent against a local Supabase stack: `npm run test:e2e`, see the file header.)
 - [ ] **G5 automated check.** `npm run g5:check` over all whitelist IDs; every failure is
   listed in `data/jelajahi-g5-excluded.json` (hidden, not substituted).
 - [ ] **G5 manual sample.** Play the 20 IDs in `docs/qa/g5-oembed-report.json` →
