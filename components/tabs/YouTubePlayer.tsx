@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../Icon";
 
-type YTPlayer = { destroy(): void };
+type YTPlayer = {
+  destroy(): void;
+  stopVideo(): void;
+  playVideo(): void;
+  seekTo(seconds: number, allowSeekAhead: boolean): void;
+  cueVideoById(videoId: string): void;
+  getVideoData?(): { video_id?: string };
+};
 type YTNamespace = {
   Player: new (
     el: HTMLElement,
@@ -14,7 +21,7 @@ type YTNamespace = {
       height?: string;
       playerVars?: Record<string, string | number>;
       events?: {
-        onStateChange?: (e: { data: number }) => void;
+        onStateChange?: (e: { data: number; target: YTPlayer }) => void;
         onError?: (e: { data: number }) => void;
       };
     },
@@ -51,7 +58,9 @@ function loadIframeApi(): Promise<YTNamespace> {
   return apiPromise;
 }
 
+const ENDED = 0;
 const PLAYING = 1;
+const BUFFERING = 3;
 
 /** YouTube onError codes: https://developers.google.com/youtube/iframe_api_reference#onError */
 function errorText(code: number): string {
@@ -85,6 +94,9 @@ export function YouTubePlayer({
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<number | null>(null);
+  const [ended, setEnded] = useState(false);
+  const [blockedOther, setBlockedOther] = useState(false);
+  const playerRef = useRef<YTPlayer | null>(null);
   const callbacks = useRef({ onPlay, onError });
 
   useEffect(() => {
@@ -111,6 +123,20 @@ export function YouTubePlayer({
           playerVars: { rel: 0, playsinline: 1, cc_load_policy: 1, hl: "id", origin: window.location.origin },
           events: {
             onStateChange: (e) => {
+              // Only the whitelisted video that was opened may play: end-screen and
+              // "more videos" picks from YouTube are stopped and the original re-cued.
+              const current = e.target.getVideoData?.()?.video_id;
+              if ((e.data === PLAYING || e.data === BUFFERING) && current && current !== videoId) {
+                e.target.stopVideo();
+                e.target.cueVideoById(videoId);
+                setBlockedOther(true);
+                return;
+              }
+              if (e.data === ENDED) {
+                setEnded(true);
+                return;
+              }
+              if (e.data === PLAYING) setEnded(false);
               if (e.data === PLAYING && !played) {
                 played = true;
                 callbacks.current.onPlay();
@@ -122,6 +148,7 @@ export function YouTubePlayer({
             },
           },
         });
+        playerRef.current = player;
       })
       .catch(() => {
         if (!cancelled) setError(-1);
@@ -151,5 +178,32 @@ export function YouTubePlayer({
     );
   }
 
-  return <div className="player-frame" ref={hostRef} title={title} />;
+  return (
+    <div className="player-wrap">
+      <div className="player-frame" ref={hostRef} title={title} />
+      {ended && (
+        <div className="player-ended" role="status">
+          <p>
+            <strong>Video selesai.</strong> Video lain dipilih dari daftar Jelajahi, bukan dari saran YouTube.
+          </p>
+          <button
+            type="button"
+            className="btn btn-small"
+            onClick={() => {
+              setEnded(false);
+              playerRef.current?.seekTo(0, true);
+              playerRef.current?.playVideo();
+            }}
+          >
+            <Icon name="play" size={16} /> Putar lagi
+          </button>
+        </div>
+      )}
+      {blockedOther && !ended && (
+        <p className="meta" role="status">
+          Video di luar daftar Jelajahi tidak diputar di sini.
+        </p>
+      )}
+    </div>
+  );
 }
