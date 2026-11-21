@@ -7,10 +7,11 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { parseAllowlist } from "../lib/allowlist";
+import { emailSha256, parseAllowlist } from "../lib/allowlist";
 import { readGuruConfig, validateGuruConfig } from "../lib/config";
 import { GURU_PROMPT } from "../lib/guru/prompt-text";
 import { guruPromptReady } from "../lib/guru/safety";
+import { adminFromEnv } from "./lib.mjs";
 
 type Result = { name: string; ok: boolean; detail: string };
 const results: Result[] = [];
@@ -75,6 +76,30 @@ check("required env vars present", missing.length === 0, missing.length ? `missi
 check("ACCOUNT_HMAC_KEY length", (process.env.ACCOUNT_HMAC_KEY ?? "").length >= 32, "needs at least 32 characters");
 const allowlist = parseAllowlist(process.env.ALLOWLIST_EMAILS);
 check("ALLOWLIST_EMAILS parses (max 13)", allowlist.ok, allowlist.ok ? `${allowlist.emails.size} entries` : allowlist.error);
+
+// The auth hook reads allowlist_hashes; the app reads ALLOWLIST_EMAILS. They must match exactly.
+const HOOK_CHECK = "auth hook allowlist matches ALLOWLIST_EMAILS";
+if (!allowlist.ok || !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  check(HOOK_CHECK, false, "needs a valid ALLOWLIST_EMAILS plus NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
+} else {
+  try {
+    const { data, error } = await adminFromEnv().from("allowlist_hashes").select("email_sha256");
+    if (error) throw new Error(error.message);
+    const inDb = new Set((data ?? []).map((r: { email_sha256: string }) => r.email_sha256));
+    const wanted = new Set([...allowlist.emails].map(emailSha256));
+    const missingInDb = [...wanted].filter((h) => !inDb.has(h)).length;
+    const extraInDb = [...inDb].filter((h) => !wanted.has(h)).length;
+    check(
+      HOOK_CHECK,
+      missingInDb === 0 && extraInDb === 0,
+      missingInDb || extraInDb
+        ? `${missingInDb} allowlisted email(s) missing from the hook table, ${extraInDb} extra hash(es); run npm run allowlist:sync -- --apply`
+        : `${inDb.size} hash(es), identical`,
+    );
+  } catch (err) {
+    check(HOOK_CHECK, false, `could not read allowlist_hashes: ${(err as Error).message}`);
+  }
+}
 
 for (const r of results) console.log(`${r.ok ? "PASS" : "FAIL"}  ${r.name}: ${r.detail}`);
 for (const m of [
