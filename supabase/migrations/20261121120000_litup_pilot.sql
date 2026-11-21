@@ -57,7 +57,7 @@ create table public.spend_ledger (
   -- Set to null on account deletion; the amounts stay as ID-less aggregates.
   account_hash text,
   request_id text not null unique,
-  kind text check (kind in ('trial', 'free_short', 'pilot')),
+  kind text check (kind in ('trial', 'free_short', 'pilot', 'pilot_trial')),
   reserved_idr int not null check (reserved_idr > 0),
   settled_idr int check (settled_idr >= 0),
   status text not null check (status in ('reserved', 'settled', 'released')),
@@ -317,6 +317,9 @@ $$;
 -- p_caps keys: trial_session_msg_cap, trial_sessions, session_idle_minutes,
 --              free_monthly_short_cap, pilot_daily_msg_cap
 -- Every admitted call (including a learner's retry) consumes one message.
+-- With caps lifted nobody is in a trial, so a pilot learner's first
+-- trial_sessions x trial_session_msg_cap calls are ledgered as 'pilot_trial'
+-- and Metric 4 still gets one trial-sized unit per learner.
 -- ---------------------------------------------------------------------------
 
 create function public.admit_guru_call(
@@ -348,6 +351,7 @@ declare
   v_count int;
   v_reserve jsonb;
   v_ended boolean := false;
+  v_ledger_kind text;
 begin
   if p_mode not in ('trial', 'pilot') then
     raise exception 'unknown mode %', p_mode;
@@ -365,7 +369,14 @@ begin
       return jsonb_build_object('ok', false, 'reason', 'cap', 'cap', 'pilot_daily', 'used', v_count, 'limit', v_pilot_cap);
     end if;
 
-    v_reserve := public.reserve_spend(p_request_id, p_account_hash, p_amount_idr, p_hard_stop_idr, 'pilot', p_now);
+    v_ledger_kind := 'pilot';
+    if v_session_cap is not null then
+      select case when count(*) < v_session_cap * v_sessions then 'pilot_trial' else 'pilot' end
+        into v_ledger_kind
+        from public.spend_ledger
+       where account_hash = p_account_hash and kind in ('trial', 'pilot_trial') and request_id <> p_request_id;
+    end if;
+    v_reserve := public.reserve_spend(p_request_id, p_account_hash, p_amount_idr, p_hard_stop_idr, v_ledger_kind, p_now);
     if not (v_reserve ->> 'ok')::boolean then
       return v_reserve;
     end if;
@@ -596,6 +607,7 @@ declare
   v_rate int;
   v_ledger int;
   v_profiles int;
+  v_deletion_id bigint;
 begin
   if p_account_hash !~ '^[0-9a-f]{64}$' then
     raise exception 'invalid account hash';
@@ -614,16 +626,18 @@ begin
   get diagnostics v_profiles = row_count;
 
   insert into public.deletion_log (account_hash, requested_at, completed_at, method)
-  values (p_account_hash, coalesce(p_requested_at, p_now), p_now, p_method);
+  values (p_account_hash, coalesce(p_requested_at, p_now), p_now, p_method)
+  returning id into v_deletion_id;
 
-  return jsonb_build_object('events', v_events, 'trial_sessions', v_sessions,
+  return jsonb_build_object('deletion_id', v_deletion_id, 'events', v_events, 'trial_sessions', v_sessions,
     'usage_counters', v_counters, 'rate_limits', v_rate,
     'ledger_rows_anonymized', v_ledger, 'profiles', v_profiles);
 end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Metric 4 (LIVE in stealth): p95 model cost per two-session trial unit,
+-- Metric 4 (LIVE in stealth): p95 model cost per two-session trial unit
+-- ('trial' rows, or a pilot learner's first trial-sized 'pilot_trial' rows),
 -- compared with COST_P95_TRIAL_MAX_IDR by scripts/spend-status.mjs.
 -- ---------------------------------------------------------------------------
 
@@ -636,7 +650,7 @@ as $$
   with per_trial as (
     select l.account_hash, sum(coalesce(l.settled_idr, l.reserved_idr)) as cost_idr
       from public.spend_ledger l
-     where l.kind = 'trial' and l.account_hash is not null and l.status <> 'released'
+     where l.kind in ('trial', 'pilot_trial') and l.account_hash is not null and l.status <> 'released'
      group by l.account_hash
   )
   select jsonb_build_object(

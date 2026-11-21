@@ -142,8 +142,23 @@ describe("Guruku caps (admit_guru_call)", { skip }, () => {
     assert.deepEqual([over.ok, over.cap, over.used, over.limit], [false, "pilot_daily", 100, 100]);
     const nextDay = await admit(a, "2026-11-22T17:00:00Z", "pilot");
     assert.deepEqual([nextDay.ok, nextDay.used], [true, 1]);
-    const { rows } = await db.pool.query(`select count(*)::int n from public.spend_ledger where kind = 'pilot'`);
-    assert.equal(rows[0].n, 101);
+    const { rows } = await db.pool.query(`select kind, count(*)::int n from public.spend_ledger group by kind order by kind`);
+    assert.deepEqual(rows, [{ kind: "pilot", n: 73 }, { kind: "pilot_trial", n: 28 }]);
+  });
+
+  test("pilot flag: the first trial-sized 28 calls feed Metric 4 as one trial unit", async () => {
+    for (const [n, who, cost] of [[30, hash(10), 50], [5, hash(11), 40]] as const) {
+      for (let i = 0; i < n; i++) {
+        seq += 1;
+        await call(db, "admit_guru_call", [`m4-${seq}`, who, "pilot", JSON.stringify(CAPS), 100, HARD_STOP, at("2026-11-22T06:00:00Z", i)]);
+        await call(db, "settle_spend", [`m4-${seq}`, cost, null, null, null, null, 4_000_000, at("2026-11-22T06:00:00Z", i)]);
+      }
+    }
+    // A replayed request keeps its original kind and is not counted twice.
+    await call(db, "admit_guru_call", [`m4-${seq}`, hash(11), "pilot", JSON.stringify(CAPS), 100, HARD_STOP, "2026-11-22T06:10:00Z"]);
+    const m4 = await call<{ trials: number; max_idr: number }>(db, "metric4_trial_cost", []);
+    assert.equal(m4.trials, 2);
+    assert.equal(Number(m4.max_idr), 28 * 50);
   });
 
   test("guru_status reports remaining quota without changing it", async () => {
