@@ -1,0 +1,84 @@
+{
+  "check": "reserve_spend concurrency",
+  "ran_at": "2026-11-21T10:30:11.005Z",
+  "passed": true,
+  "git_commit_at_run": "8d27b2e415a70d6e615d9ea0cb0ebda66ec91264",
+  "migrations": [
+    "20261121120000_litup_pilot.sql"
+  ],
+  "migrations_sha256": "efc330956042b4adbc1ad85118c23870d79d7505d14c21d8d624d5795c2ec20d",
+  "postgres": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
+  "node": "v22.23.4",
+  "scenarios": [
+    {
+      "name": "LU-HARDSTOP-CONCURRENCY fixture (gated, 3 x Rp300 at Rp4,999,500)",
+      "connections": 3,
+      "attempts": 3,
+      "admitted": 1,
+      "refused_hard_stop": 2,
+      "other": 0,
+      "cap_idr": 5000000,
+      "start_total_idr": 4999500,
+      "end_total_idr": 4999800,
+      "max_observed_total_idr": 4999800,
+      "ledger_matches_month": true,
+      "passed": true
+    },
+    {
+      "name": "100 x Rp100, Rp1,000 headroom",
+      "connections": 25,
+      "attempts": 100,
+      "admitted": 10,
+      "refused_hard_stop": 90,
+      "other": 0,
+      "cap_idr": 5000000,
+      "start_total_idr": 4999000,
+      "end_total_idr": 5000000,
+      "max_observed_total_idr": 5000000,
+      "ledger_matches_month": true,
+      "passed": true
+    },
+    {
+      "name": "400 random Rp1-300 with settle/release churn, Rp20,000 headroom",
+      "connections": 40,
+      "attempts": 400,
+      "admitted": 252,
+      "refused_hard_stop": 148,
+      "other": 0,
+      "cap_idr": 5000000,
+      "start_total_idr": 4980000,
+      "end_total_idr": 4999992,
+      "max_observed_total_idr": 4999998,
+      "ledger_matches_month": true,
+      "passed": true
+    },
+    {
+      "name": "admit_guru_call 13 accounts x 10, Rp3,000 headroom",
+      "connections": 26,
+      "attempts": 130,
+      "admitted": 30,
+      "refused_hard_stop": 100,
+      "other": 0,
+      "cap_idr": 5000000,
+      "start_total_idr": 4997000,
+      "end_total_idr": 5000000,
+      "max_observed_total_idr": 5000000,
+      "ledger_matches_month": true,
+      "passed": true
+    },
+    {
+      "name": "20 x replay of one request_id",
+      "connections": 20,
+      "attempts": 20,
+      "admitted": 1,
+      "refused_hard_stop": 0,
+      "other": 19,
+      "cap_idr": 5000000,
+      "start_total_idr": 0,
+      "end_total_idr": 100,
+      "max_observed_total_idr": 100,
+      "ledger_matches_month": true,
+      "passed": true
+    }
+  ]
+}

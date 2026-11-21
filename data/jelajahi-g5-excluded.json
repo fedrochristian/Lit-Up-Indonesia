@@ -1,0 +1,19 @@
+{
+  "note": "Whitelist IDs hidden from Jelajahi because the automated G5 oEmbed check failed (scripts/g5-oembed-check.mjs, report docs/qa/g5-oembed-report.json, 21 Nov 2026). Per LEO-QA-PROPOSAL LU-G5-EMBED-SMOKE-20261121 they are not substituted. The whitelist JSON itself is unchanged. Steve owns the list: re-run the check and edit this file if a video comes back.",
+  "excluded": [
+    {
+      "video_id": "Y86cp15nT2U",
+      "topic": "Artificial Intelligence",
+      "series": "Futures of AI Mini-Series",
+      "oembed_http": 404,
+      "reason": "Not found or private on YouTube (the whitelist entry also has an empty title)."
+    },
+    {
+      "video_id": "GVNy3x_PwFk",
+      "topic": "Film",
+      "series": "Film Criticism",
+      "oembed_http": 401,
+      "reason": "Embedding disabled by the owner (oEmbed 401), so it cannot play inside Lit Up."
+    }
+  ]
+}

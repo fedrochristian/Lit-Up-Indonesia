@@ -1,0 +1,139 @@
+# Lit Up stealth pilot: deploy runbook
+
+Allowlist-only pilot, Sun 22 Nov 2026 13:00–17:00 WIB. Nothing here is done by the
+agent: deploys, Vercel settings and Supabase settings wait for the owner's own words.
+
+Order: Supabase → env vars → preview deploy → QA checklist (`docs/QA-CHECKLIST.md`) →
+`npm run preflight` → owner says deploy → promote.
+
+## 1. Environment variables
+
+Set every variable in **both Preview and Production** in Vercel
+(Project `lit-up-indonesia` → Settings → Environment Variables), and in a local
+`.env.local` for scripts. Names are in `.env.example`; never commit values.
+
+| Name | Required | Value / default |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | yes | Google AI Studio key on a **PAID** tier project (QA condition (a)). Server-only. |
+| `GEMINI_MODEL` | no | `gemini-3.5-flash-lite` (must have a price entry in `lib/guru/pricing.ts`, or Guruku stays closed) |
+| `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL (Singapore) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase anon (publishable) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Supabase service role key. Server-only, never `NEXT_PUBLIC_`. |
+| `ACCOUNT_HMAC_KEY` | yes | Random secret, at least 32 characters (`openssl rand -hex 32`). Changing it breaks the link between old events and accounts. |
+| `ALLOWLIST_EMAILS` | yes | Comma-separated, max 13: Fedro, Tri (test identity), Steve, Elon, Leo, Charlie, Peter, plus test accounts |
+| `NEXT_PUBLIC_SITE_URL` | yes | Production origin, e.g. `https://litup.id`. Previews use their own origin automatically. |
+| `PILOT_CAPS_LIFTED` | no | `false`. `true` switches to 100 messages/day per learner; the Rp5m hard stop still applies. |
+| `ALERT_WEBHOOK_URL` | no | Free incoming webhook (Slack, Google Chat or Discord) for operator alerts. Setup in section 6. |
+| `ALERT_EMAIL_TO` | no | Recorded only; no email sender is wired (free route). See QA checklist. |
+| `MAX_OUTPUT_TOKENS` | no | 1024 |
+| `SHORT_RESPONSE_MAX_TOKENS` | no | 400 |
+| `THINKING_TOKENS_ALLOWANCE` | no | 512. Not sent to Google (Guruku uses `thinkingLevel: MINIMAL`); assumed thinking tokens for the Rp100 worst-case check. |
+| `MAX_INPUT_TOKENS` | no | 4000 |
+| `PER_CALL_RESERVE_IDR` | no | 100 (config refuses values below the worst-case call cost, Rp93 at defaults) |
+| `TRIAL_SESSION_MSG_CAP` | no | 14 (x 2 sessions; retries count) |
+| `PILOT_DAILY_MSG_CAP` | no | 100 |
+| `FREE_MONTHLY_SHORT_CAP` | no | 5 |
+| `RATE_LIMIT_USER_PER_MIN` | no | 6 (burst 3 per 10 s is fixed) |
+| `RATE_LIMIT_IP_PER_MIN` | no | 30 |
+| `USD_IDR_RATE` | no | 18264 |
+| `COST_P95_TRIAL_MAX_IDR` | no | 2800 (= 28 x Rp100; renamed from `COST_P95_SESSION_MAX_IDR`) |
+| `MONTHLY_BURN_ALERT_IDR` | no | 4000000 |
+| `MONTHLY_BURN_HARD_STOP_IDR` | no | 5000000 (per WIB calendar month, resets 00:00 WIB on the 1st) |
+| `TRIGGER_CONVERSION_ENABLED` | no | `false` (floor: 100 trials) |
+| `TRIGGER_MAU_ENABLED` | no | `false` |
+
+## 2. Supabase (Free plan, Singapore)
+
+1. Create a project in region **Southeast Asia (Singapore)**.
+2. SQL Editor → run `supabase/migrations/20261121120000_litup_pilot.sql` once.
+   (Or `npx supabase link` + `npx supabase db push`.)
+3. Authentication → Sign In / Providers: keep **Email** only; turn off every other provider.
+   Leave "Allow new users to sign up" on (the hook below is the gate; turning sign-up
+   off would also block allowlisted first-time sign-ins).
+4. Authentication → Hooks → **Before User Created** → Postgres →
+   `public.hook_before_user_created`. Any email not on the allowlist gets HTTP 403.
+5. Fill the hook's allowlist table (stores SHA-256 hashes, not emails):
+   `npx tsx --env-file=.env.local scripts/sync-allowlist.mts` (dry run), then add `--apply`.
+   Re-run after every `ALLOWLIST_EMAILS` change.
+6. Authentication → URL Configuration:
+   - Site URL: `https://litup.id` (or the production `NEXT_PUBLIC_SITE_URL`)
+   - Redirect URLs:
+     - `https://litup.id/**`
+     - `https://lit-up-indonesia.vercel.app/**`
+     - `https://lit-up-indonesia-*-<owner-team-slug>.vercel.app/**` (preview pattern; keep the
+       team slug so other people's `lit-up-indonesia-…` projects cannot receive links)
+     - `http://localhost:3000/**`
+7. Authentication → Email Templates → **Magic Link**: replace the link with
+   `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email`
+   so links work when opened on another device. (`/auth/confirm` also accepts the default
+   `?code=` link, but that one only works in the browser that asked for it.)
+8. Built-in email sending is rate-limited on the Free plan (a few emails per hour). Fine
+   for 7–13 people; send links a few minutes apart. Custom SMTP would be a paid/extra service.
+9. Database → Backups: confirm platform backups are retained 30 days or less (deletion
+   promise: hard delete within 7 days, backups expire within 30 days).
+
+## 3. Vercel (project `lit-up-indonesia`, owner's account)
+
+1. Env vars from section 1 in **Preview and Production**.
+2. Settings → Deployment Protection → **Vercel Authentication: off for previews**. The
+   app's allowlist sign-in is the gate. (Agent did not change this.)
+3. Indexing: handled in code (`X-Robots-Tag: noindex, nofollow` on every response,
+   `robots.txt` disallows all, `<meta name="robots" content="noindex">`).
+4. Open the PR's preview URL and run `docs/QA-CHECKLIST.md`.
+5. Deploy to production only after the owner says so. Rollback: Deployments → previous
+   production deployment → Promote (instant, no rebuild).
+
+## 4. Guruku safety text
+
+Elon's merged text (`LU-GURU-SAFETY-20261121`) is in `lib/guru/prompt-text.ts`
+(`GURU_PROMPT`, `status: "final"`), together with the AI disclosure, hard-stop and refusal
+copy. Any later wording change goes in that file only; re-run `npm test` and
+`npm run preflight`. Setting `status` back to `"pending"` closes Guruku (no model calls,
+no spend) without touching anything else.
+
+## 5. Operating the pilot
+
+- Spend: `npm run spend:status` (month totals, alert/hard stop state, stale reservations,
+  and Metric 4: "below threshold, n = X" or "ABOVE threshold, pause scaling", with p95 and
+  max per trial unit vs Rp2,800 and full vs partial units). Quote Metric 4 with its n; it is
+  a reading, not a pass. `-- --settle-stale` settles reservations older than 15 min at
+  their reserved amount (conservative).
+- Deletion requests outside the app:
+  `npm run account:delete -- --email someone@example.com` (dry run with counts), then
+  `--confirm`. Records a dated deletion log; cost aggregates stay without the account ID.
+  The script and the in-app confirmation both show the WIB date and a reference
+  (`LU-DEL-000123`, the `deletion_log` id) to quote back to the learner.
+- Metric 4 with `PILOT_CAPS_LIFTED=true`: nobody is in a trial, so each learner's first
+  28 charged Guruku calls (2 sessions x 14) are ledgered as `pilot_trial` and count as one
+  trial unit; later calls are `pilot`. Released calls (provider confirmed no charge) count
+  toward neither the 28 nor the cost. `spend:status` reports the p95 over those units.
+- Hard stop at Rp5m: Guruku shows "Guruku sedang istirahat…"; Jelajahi and Belajarku keep working.
+
+## 6. Operator alerts (`ALERT_WEBHOOK_URL`, optional, free)
+
+Alerts are always written to the Vercel function log as `[ALERT] ...` (search the
+project's Logs for `[ALERT]`). They fire for: monthly spend crossing Rp4,000,000 (once
+per month) and any single Guruku call settling above the Rp100 reserve. The hard stop
+itself needs no alert: Guruku closes on its own.
+
+To also get them in a chat, create one incoming webhook and set its URL as
+`ALERT_WEBHOOK_URL` in Vercel (Production and Preview), then redeploy:
+
+- **Slack:** api.slack.com/apps > Create New App > From scratch > Incoming Webhooks > on >
+  Add New Webhook to Workspace > pick a private channel. URL starts `https://hooks.slack.com/services/`.
+- **Google Chat:** in a space, Apps & integrations > Webhooks > Add webhook. URL starts
+  `https://chat.googleapis.com/v1/spaces/`. (Needs a Google Workspace account.)
+- **Discord:** Server Settings > Integrations > Webhooks > New Webhook > Copy Webhook URL.
+  URL starts `https://discord.com/api/webhooks/`.
+
+Slack and Google Chat receive `{"text": ...}`, Discord `{"content": ...}`
+(`lib/alert-payload.ts`). Microsoft Teams Workflows webhooks need an Adaptive Card body and
+are not supported. The URL is a secret: set it only in Vercel, never in the repo. A failed
+or non-2xx webhook is logged as `[ALERT] webhook ...` and does not affect the learner.
+Test it once with:
+
+```bash
+curl -X POST -H 'content-type: application/json' -d '{"text":"Lit Up alert test"}' "$ALERT_WEBHOOK_URL"
+```
+
+(use `{"content":"Lit Up alert test"}` for Discord).
