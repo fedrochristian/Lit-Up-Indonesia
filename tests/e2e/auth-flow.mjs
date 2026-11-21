@@ -110,12 +110,13 @@ const hash = prof.rows[0]?.account_hash;
 
 // 4. APIs
 const status = await (await get(`${APP}/api/guru`, jar)).json();
-check("Guruku status: closed awaiting safety text, usage readable", status.closedReason === "safety_text_pending" && status.usage?.mode === "trial", JSON.stringify(status).slice(0, 160));
+check("Guruku status: open (safety text final), usage readable", status.available === true && !status.closedReason && status.usage?.mode === "trial", JSON.stringify(status).slice(0, 160));
+// Locally GEMINI_API_KEY is a placeholder: Google rejects it, which must release the Rp100 reservation at Rp0.
 const guruPost = await get(`${APP}/api/guru`, jar, { method: "POST", headers: { origin: APP, "content-type": "application/json" }, body: JSON.stringify({ message: "Apa itu fotosintesis?" }) });
 const guruBody = await guruPost.json();
-check("Guruku POST refused before any reservation", guruPost.status === 503 && guruBody.reason === "safety_text_pending", `${guruPost.status} ${JSON.stringify(guruBody)}`);
-const ledger = Number((await db.query(`select count(*) from public.spend_ledger`)).rows[0].count);
-check("no spend reserved", ledger === 0);
+check("Guruku POST with a rejected key returns provider_error", guruPost.status === 502 && guruBody.status === "provider_error", `${guruPost.status} ${JSON.stringify(guruBody)}`);
+const ledger = (await db.query(`select status, settled_idr from public.spend_ledger where account_hash = $1 order by id desc limit 1`, [hash])).rows[0];
+check("provider rejection releases the reservation (Rp0 charged)", ledger?.status === "released" && Number(ledger.settled_idr ?? 0) === 0, JSON.stringify(ledger));
 const crossSite = await get(`${APP}/api/guru`, jar, { method: "POST", headers: { origin: "https://evil.test", "content-type": "application/json" }, body: "{}" });
 check("cross-origin Guruku POST rejected", crossSite.status === 403);
 

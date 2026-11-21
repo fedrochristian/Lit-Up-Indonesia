@@ -103,7 +103,7 @@ if (!allowlist.ok || !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPAB
 
 for (const r of results) console.log(`${r.ok ? "PASS" : "FAIL"}  ${r.name}: ${r.detail}`);
 for (const m of [
-  "QA condition (a): model ID and price confirmed on Google's live pricing page; GEMINI_API_KEY is PAID tier",
+  "QA condition (a): GEMINI_API_KEY is on the PAID tier (Fedro; model ID and prices already verified by Elon)",
   "QA condition (c): off-allowlist email refused and allowlisted email signed in on the preview URL",
   "G5 manual sample: 20 IDs from docs/qa/g5-oembed-report.json played in the app",
 ]) {
