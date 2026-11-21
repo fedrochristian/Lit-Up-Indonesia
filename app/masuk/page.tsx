@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { currentLearner } from "@/lib/auth/session";
+import { readDeletionReceipt } from "@/lib/deletion";
 import { SignInForm } from "./SignInForm";
 
 const NOTES: Record<string, { tone: "warn" | "danger" | "ok"; text: string }> = {
@@ -9,13 +10,13 @@ const NOTES: Record<string, { tone: "warn" | "danger" | "ok"; text: string }> = 
   selesai: { tone: "ok", text: "Akun dan datamu sudah dihapus. Terima kasih sudah ikut menguji Lit Up." },
 };
 
-function deletionNote(ref: unknown, tgl: unknown): string {
-  const base = NOTES.selesai.text;
-  if (typeof ref !== "string" || !/^LU-DEL-\d{6,}$/.test(ref) || typeof tgl !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(tgl)) return base;
-  const day = new Date(`${tgl}T00:00:00Z`);
-  if (Number.isNaN(day.getTime())) return base;
+function deletionNote(params: Record<string, unknown>): string {
+  const receipt = readDeletionReceipt(params);
+  if (!receipt) return NOTES.selesai.text;
+  const day = new Date(`${receipt.date}T00:00:00Z`);
+  if (Number.isNaN(day.getTime())) return NOTES.selesai.text;
   const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(day);
-  return `Akun dan datamu sudah dihapus pada ${date} (WIB). Nomor referensi: ${ref}. Terima kasih sudah ikut menguji Lit Up.`;
+  return `Akun dan datamu sudah dihapus pada ${date} (WIB). Nomor referensi: ${receipt.reference}. Terima kasih sudah ikut menguji Lit Up.`;
 }
 
 export default async function MasukPage(props: PageProps<"/masuk">) {
@@ -24,7 +25,7 @@ export default async function MasukPage(props: PageProps<"/masuk">) {
 
   const params = await props.searchParams;
   const key = typeof params.galat === "string" ? params.galat : params.hapus === "selesai" ? "selesai" : "";
-  const note = key === "selesai" ? { ...NOTES.selesai, text: deletionNote(params.ref, params.tgl) } : NOTES[key];
+  const note = key === "selesai" ? { ...NOTES.selesai, text: deletionNote(params) } : NOTES[key];
 
   return (
     <>

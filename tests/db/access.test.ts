@@ -136,7 +136,8 @@ describe("delete_account_data", { skip }, () => {
       await db.pool.query(`insert into public.events (account_hash, name, props, app_version, env) values ($1, 'tab_view', '{}', 'test', 'development')`, [who]);
     }
 
-    const { deletion_id, ...counts } = await call<Record<string, number>>(db, "delete_account_data", [a, "in_app", "2026-11-22T06:05:00Z", "2026-11-22T06:05:02Z"]);
+    const { deletion_id, completed_at, ...counts } = await call<Record<string, number | string>>(db, "delete_account_data", [a, "in_app", "2026-11-22T06:05:00Z", "2026-11-22T06:05:02Z"]);
+    assert.equal(new Date(completed_at as string).toISOString(), "2026-11-22T06:05:02.000Z");
     assert.deepEqual(counts, { events: 1, trial_sessions: 1, usage_counters: 0, rate_limits: 1, ledger_rows_anonymized: 1, profiles: 1 });
 
     for (const t of ["events", "trial_sessions", "usage_counters", "spend_ledger", "profiles"]) {
@@ -154,6 +155,7 @@ describe("delete_account_data", { skip }, () => {
     const { rows: log } = await db.pool.query(`select id::int, method, requested_at, completed_at from public.deletion_log`);
     assert.equal(log.length, 1);
     assert.equal(log[0].id, deletion_id);
+    assert.equal(log[0].completed_at.toISOString(), "2026-11-22T06:05:02.000Z");
     assert.equal(log[0].method, "in_app");
     assert.equal(log[0].requested_at.toISOString(), "2026-11-22T06:05:00.000Z");
 

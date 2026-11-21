@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "node:test";
 import { alertPayload } from "../../lib/alert-payload";
-import { deleteAccount } from "../../lib/deletion";
+import { deleteAccount, readDeletionReceipt, receiptQuery } from "../../lib/deletion";
 import { CLIENT_EVENTS, EVENT_SCHEMAS, sanitizeEventProps } from "../../lib/events";
 import { accountHash, clientIp, ipHash } from "../../lib/hash";
 import { crashCourseSource, G5_EXCLUDED_IDS, sampleAcrossTopics, VIDEO_ID_RE, WHITELIST_META } from "../../lib/jelajahi/whitelist";
@@ -111,7 +111,7 @@ describe("deletion orchestration", () => {
     const counts = await deleteAccount({ userId: "u1", accountHash: "a".repeat(64) }, "in_app", {
       rpc: async <T,>(fn: string, args: Record<string, unknown>) => {
         steps.push(`${fn}:${args.p_method}`);
-        return { deletion_id: 42, events: 3 } as T;
+        return { deletion_id: 42, completed_at: "2026-11-22T17:30:00+00:00", events: 3 } as T;
       },
       deleteAuthUser: async (id) => {
         steps.push(`auth:${id}`);
@@ -119,7 +119,7 @@ describe("deletion orchestration", () => {
       logEvent: async (name, props, hash) => {
         steps.push(`${name}:${JSON.stringify(props)}:${hash}`);
       },
-    }, undefined, () => new Date("2026-11-22T17:30:00Z"));
+    });
     assert.deepEqual(steps, ["delete_account_data:in_app", "auth:u1", 'deletion_done:{"method":"in_app"}:null']);
     assert.deepEqual(counts, { reference: "LU-DEL-000042", date: "2026-11-23", counts: { events: 3 } });
   });
@@ -131,5 +131,24 @@ describe("operator alert webhook payload", () => {
     assert.deepEqual(alertPayload("https://chat.googleapis.com/v1/spaces/S/messages?key=k&token=t", "hi"), { text: "hi" });
     assert.deepEqual(alertPayload("https://discord.com/api/webhooks/1/x", "hi"), { content: "hi" });
     assert.deepEqual(alertPayload("https://evil-discord.com.example/x", "hi"), { text: "hi" });
+  });
+});
+
+describe("deletion receipt", () => {
+  const env = { ACCOUNT_HMAC_KEY: "k".repeat(32) };
+  const params = (q: string) => Object.fromEntries(new URLSearchParams(q));
+
+  test("a receipt the server issued reads back; the date comes from the DB completion time (WIB)", () => {
+    const q = receiptQuery({ reference: "LU-DEL-000042", date: "2026-11-23" }, env);
+    assert.deepEqual(readDeletionReceipt(params(q), env), { reference: "LU-DEL-000042", date: "2026-11-23" });
+  });
+
+  test("edited, unsigned or wrongly keyed receipts are ignored", () => {
+    const q = params(receiptQuery({ reference: "LU-DEL-000042", date: "2026-11-23" }, env));
+    assert.equal(readDeletionReceipt({ ...q, ref: "LU-DEL-000043" }, env), null);
+    assert.equal(readDeletionReceipt({ ...q, tgl: "2026-11-01" }, env), null);
+    assert.equal(readDeletionReceipt({ hapus: "selesai", ref: "LU-DEL-000042", tgl: "2026-11-23" }, env), null);
+    assert.equal(readDeletionReceipt(q, { ACCOUNT_HMAC_KEY: "x".repeat(32) }), null);
+    assert.equal(readDeletionReceipt(q, {}), null);
   });
 });

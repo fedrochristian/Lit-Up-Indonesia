@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { currentLearner } from "@/lib/auth/session";
-import { deleteAccount } from "@/lib/deletion";
+import { deleteAccount, receiptQuery } from "@/lib/deletion";
 import { logEvent } from "@/lib/server-events";
 import { adminClient, rpc } from "@/lib/supabase/admin";
 import { serverClient } from "@/lib/supabase/server";
@@ -33,5 +33,5 @@ export async function deleteMyAccount(_prev: DeleteState, formData: FormData): P
 
   const supabase = await serverClient();
   await supabase.auth.signOut();
-  redirect(`/masuk?hapus=selesai&ref=${done.reference}&tgl=${done.date}`);
+  redirect(`/masuk?${receiptQuery(done)}`);
 }

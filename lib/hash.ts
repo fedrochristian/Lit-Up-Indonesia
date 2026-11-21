@@ -26,6 +26,11 @@ export function turnSignature(accountHash: string, text: string, env?: Record<st
   return createHmac("sha256", key(env)).update(`guru-turn:v1\n${accountHash}\n${text}`, "utf8").digest("base64url");
 }
 
+/** Signs a deletion receipt (reference + WIB date) so /masuk only shows ones the server issued. */
+export function receiptSignature(reference: string, date: string, env?: Record<string, string | undefined>): string {
+  return createHmac("sha256", key(env)).update(`deletion-receipt:v1\n${reference}\n${date}`, "utf8").digest("base64url");
+}
+
 export function clientIp(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
