@@ -1,0 +1,148 @@
+{
+  "check": "G5 oEmbed (automated) — LEO-QA-PROPOSAL LU-G5-EMBED-SMOKE-20261121",
+  "whitelist_file": "data/jelajahi-crashcourse-whitelist-20261121.json",
+  "whitelist_version": "2026-11-21",
+  "ran_at_utc": "2026-11-21T09:14:53.344Z",
+  "duration_s": 5,
+  "total": 1643,
+  "passed": 1641,
+  "failed": 2,
+  "failures": [
+    {
+      "id": "Y86cp15nT2U",
+      "http": 404,
+      "ok": false,
+      "reason": "http_404"
+    },
+    {
+      "id": "GVNy3x_PwFk",
+      "http": 401,
+      "ok": false,
+      "reason": "http_401"
+    }
+  ],
+  "note": "oEmbed 200 with the official author shows the video is public and the owner did not disable oEmbed. It does not prove in-page playback on the candidate host; that is the manual sample below.",
+  "manual_sample_seed": 20261122,
+  "manual_sample": [
+    {
+      "video_id": "zjK7PWmRRyg",
+      "topic": "History",
+      "title": "The Industrial Revolution: Crash Course European History #24",
+      "url": "https://www.youtube.com/watch?v=zjK7PWmRRyg"
+    },
+    {
+      "video_id": "BUmdnJZcC88",
+      "topic": "Chemistry",
+      "title": "Chemoselectivity and Protecting Groups: Crash Course Organic Chemistry #33",
+      "url": "https://www.youtube.com/watch?v=BUmdnJZcC88"
+    },
+    {
+      "video_id": "lQ6FBA1HM3s",
+      "topic": "Chemistry",
+      "title": "Redox Reactions: Crash Course Chemistry #10",
+      "url": "https://www.youtube.com/watch?v=lQ6FBA1HM3s"
+    },
+    {
+      "video_id": "T8-85cZRI9o",
+      "topic": "Economics",
+      "title": "Inflation and Bubbles and Tulips: Crash Course Economics #7",
+      "url": "https://www.youtube.com/watch?v=T8-85cZRI9o"
+    },
+    {
+      "video_id": "56gqCXlUCoE",
+      "topic": "History",
+      "title": "The Tuskegee Experiment: Crash Course Black American History #29",
+      "url": "https://www.youtube.com/watch?v=56gqCXlUCoE"
+    },
+    {
+      "video_id": "rP54LFFSZ1Q",
+      "topic": "World History",
+      "title": "Water and Classical Civilizations: Crash Course World History 222",
+      "url": "https://www.youtube.com/watch?v=rP54LFFSZ1Q"
+    },
+    {
+      "video_id": "qOa8djo1uLc",
+      "topic": "Astronomy",
+      "title": "Why We Can Exist | Crash Course Pods: The Universe #2",
+      "url": "https://www.youtube.com/watch?v=qOa8djo1uLc"
+    },
+    {
+      "video_id": "9EbZBJZruAc",
+      "topic": "World Mythology",
+      "title": "Cities of Myth: Crash Course World Mythology #35",
+      "url": "https://www.youtube.com/watch?v=9EbZBJZruAc"
+    },
+    {
+      "video_id": "xMa1BQ8z9C0",
+      "topic": "Chemistry",
+      "title": "IR Spectroscopy and Mass Spectrometry: Crash Course Organic Chemistry #5",
+      "url": "https://www.youtube.com/watch?v=xMa1BQ8z9C0"
+    },
+    {
+      "video_id": "IRBfpBPELmE",
+      "topic": "Physics",
+      "title": "Light Is Waves: Crash Course Physics #39",
+      "url": "https://www.youtube.com/watch?v=IRBfpBPELmE"
+    },
+    {
+      "video_id": "9Q9WAe_aqPs",
+      "topic": "Government",
+      "title": "Is the Electoral College Broken?: Crash Course US Government #5",
+      "url": "https://www.youtube.com/watch?v=9Q9WAe_aqPs"
+    },
+    {
+      "video_id": "3imIf8NAcWQ",
+      "topic": "Government",
+      "title": "Who Was Karl Marx? And Why Is Everyone Still Talking About Him?",
+      "url": "https://www.youtube.com/watch?v=3imIf8NAcWQ"
+    },
+    {
+      "video_id": "9h2f1Bjr0p4",
+      "topic": "Chemistry",
+      "title": "Solutions: Crash Course Chemistry #27",
+      "url": "https://www.youtube.com/watch?v=9h2f1Bjr0p4"
+    },
+    {
+      "video_id": "uNfUAJBuZ0s",
+      "topic": "Engineering",
+      "title": "How Engineering Robots Works: Crash Course Engineering #33",
+      "url": "https://www.youtube.com/watch?v=uNfUAJBuZ0s"
+    },
+    {
+      "video_id": "fSEFfWf2au0",
+      "topic": "Engineering",
+      "title": "The First & Zeroth Laws of Thermodynamics: Crash Course Engineering #9",
+      "url": "https://www.youtube.com/watch?v=fSEFfWf2au0"
+    },
+    {
+      "video_id": "VbfIGVhRups",
+      "topic": "Art History",
+      "title": "How a Banana Sold for $150,000 : Modern Art",
+      "url": "https://www.youtube.com/watch?v=VbfIGVhRups"
+    },
+    {
+      "video_id": "jhXCTbFnK8o",
+      "topic": "Computer Science",
+      "title": "Cryptography: Crash Course Computer Science #33",
+      "url": "https://www.youtube.com/watch?v=jhXCTbFnK8o"
+    },
+    {
+      "video_id": "rrLZPDGNr6w",
+      "topic": "Biology",
+      "title": "How Do We Categorize Plants?: Crash Course Botany #7",
+      "url": "https://www.youtube.com/watch?v=rrLZPDGNr6w"
+    },
+    {
+      "video_id": "KETTtiprINU",
+      "topic": "Philosophy",
+      "title": "Compatibilism: Crash Course Philosophy #25",
+      "url": "https://www.youtube.com/watch?v=KETTtiprINU"
+    },
+    {
+      "video_id": "b3mj4QQH8TM",
+      "topic": "Theater",
+      "title": "Nostrils, Harmony with the Universe, and Ancient Sanskrit Theater: Crash Course Theater #7",
+      "url": "https://www.youtube.com/watch?v=b3mj4QQH8TM"
+    }
+  ]
+}
