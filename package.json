@@ -4,25 +4,41 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:local": "LITUP_PREVIEW=1 next dev --webpack --hostname 127.0.0.1 --port 3011",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsc --outDir tmp/site-tests --module commonjs --target es2022 --esModuleInterop --skipLibCheck lib/catalog.ts lib/workspace-store.ts lib/local-request.ts && node --test tests/workspace.test.cjs"
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --import tsx --test tests/unit/*.test.ts",
+    "test:db": "node --import tsx --test --test-concurrency=1 tests/db/*.test.ts",
+    "g5:check": "node scripts/g5-oembed-check.mjs",
+    "allowlist:sync": "tsx --env-file=.env.local scripts/sync-allowlist.mts",
+    "account:delete": "tsx --env-file=.env.local scripts/delete-account.mts",
+    "spend:status": "tsx --env-file=.env.local scripts/spend-status.mts",
+    "check:concurrency": "CONCURRENCY_LOG=docs/qa/reserve-concurrency-log.json node --import tsx --test tests/db/reserve-concurrency.test.ts",
+    "preflight": "tsx --env-file-if-exists=.env.local scripts/preflight.mts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.2",
     "next": "16.3.6",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
+    "pg": "^8.23.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }
