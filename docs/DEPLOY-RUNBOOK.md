@@ -98,4 +98,4 @@ No other file changes are needed; re-run `npm test` and `npm run preflight`.
 - Deletion requests outside the app:
   `npm run account:delete -- --email someone@example.com` (dry run with counts), then
   `--confirm`. Records a dated deletion log; cost aggregates stay without the account ID.
-- Hard stop at Rp5m: Guruku shows "Guru sedang istirahat…"; Jelajahi and Belajarku keep working.
+- Hard stop at Rp5m: Guruku shows "Guruku sedang istirahat…"; Jelajahi and Belajarku keep working.

@@ -32,7 +32,7 @@ Tick each item with name, date and evidence. Unticked items block the production
   no account hash. Sign in again works (fresh account).
 - [ ] **Hard stop copy** (after the safety text is in). On a preview, temporarily set
   `MONTHLY_BURN_ALERT_IDR=50` and `MONTHLY_BURN_HARD_STOP_IDR=99` (below one Rp100 reserve):
-  Guruku shows "Guru sedang istirahat…", Jelajahi/Belajarku still work. Revert both.
+  Guruku shows "Guruku sedang istirahat…", Jelajahi/Belajarku still work. Revert both.
 - [ ] **Noindex.** `curl -I <preview>/` shows `x-robots-tag: noindex, nofollow`;
   `/robots.txt` disallows all.
 - [ ] **Vercel Authentication off for previews**, env vars present in Preview and Production,
