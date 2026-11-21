@@ -17,6 +17,8 @@ type Admit = {
   closed_sessions?: { session_no: number; guru_messages: number }[];
 };
 
+type M4 = { learners: number; full_units: number; partial_units: number; unit_calls: number; p95_idr: number; max_idr: number };
+
 let db: TestDb;
 let seq = 0;
 
@@ -156,9 +158,39 @@ describe("Guruku caps (admit_guru_call)", { skip }, () => {
     }
     // A replayed request keeps its original kind and is not counted twice.
     await call(db, "admit_guru_call", [`m4-${seq}`, hash(11), "pilot", JSON.stringify(CAPS), 100, HARD_STOP, "2026-11-22T06:10:00Z"]);
-    const m4 = await call<{ trials: number; max_idr: number }>(db, "metric4_trial_cost", []);
-    assert.equal(m4.trials, 2);
+    const m4 = await call<M4>(db, "metric4_trial_cost", []);
+    assert.deepEqual([m4.learners, m4.full_units, m4.partial_units, m4.unit_calls], [2, 1, 1, 28]);
     assert.equal(Number(m4.max_idr), 28 * 50);
+  });
+
+  test("pilot flag: released calls (provider confirmed no charge) count toward neither the 28 nor the cost", async () => {
+    const who = hash(12);
+    for (let i = 0; i < 30; i++) {
+      seq += 1;
+      await call(db, "admit_guru_call", [`rel-${seq}`, who, "pilot", JSON.stringify(CAPS), 100, HARD_STOP, at("2026-11-22T06:00:00Z", i)]);
+      if (i % 3 === 0) await call(db, "release_spend", [`rel-${seq}`, at("2026-11-22T06:00:00Z", i)]);
+      else await call(db, "settle_spend", [`rel-${seq}`, 50, null, null, null, null, 4_000_000, at("2026-11-22T06:00:00Z", i)]);
+    }
+    const { rows } = await db.pool.query(
+      `select kind, status, count(*)::int n from public.spend_ledger where account_hash = $1 group by kind, status order by kind, status`,
+      [who],
+    );
+    // 10 released, 20 charged: all 30 stay inside the trial-sized unit because only charged calls count.
+    assert.deepEqual(rows, [{ kind: "pilot_trial", status: "released", n: 10 }, { kind: "pilot_trial", status: "settled", n: 20 }]);
+    const m4 = await call<M4>(db, "metric4_trial_cost", []);
+    assert.deepEqual([m4.learners, m4.full_units, m4.partial_units, Number(m4.max_idr)], [1, 0, 1, 20 * 50]);
+  });
+
+  test("trial mode: a learner whose 2 sessions both ended is a full unit even under 28 calls", async () => {
+    const who = hash(13);
+    for (const [i, t] of ["2026-11-22T06:00:00Z", "2026-11-22T08:00:00Z"].entries()) {
+      seq += 1;
+      await call(db, "admit_guru_call", [`tr-${seq}`, who, "trial", JSON.stringify(CAPS), 100, HARD_STOP, t]);
+      await call(db, "settle_spend", [`tr-${seq}`, 60, null, null, null, null, 4_000_000, t]);
+      await call(db, "end_trial_session", [who, at(t, 60 + i)]);
+    }
+    const m4 = await call<M4>(db, "metric4_trial_cost", []);
+    assert.deepEqual([m4.learners, m4.full_units, m4.partial_units, Number(m4.max_idr)], [1, 1, 0, 120]);
   });
 
   test("guru_status reports remaining quota without changing it", async () => {

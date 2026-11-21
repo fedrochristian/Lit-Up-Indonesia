@@ -52,6 +52,7 @@ Tick each item with name, date and evidence. Unticked items block the production
 ## Daily during the pilot
 
 - [ ] `npm run spend:status`: settled vs Google billing console; no stale reservations;
-  Metric 4 p95 per trial ≤ Rp2,800.
+  Metric 4 line reads "below threshold, n = X" (p95 and max per trial unit vs Rp2,800, with
+  full vs partial units). Report it with n; it is a reading, not a pass.
 - [ ] Rp4m alert path: `ALERT_WEBHOOK_URL` set, or someone reads the server logs for `[ALERT]`.
   Email alert to `ALERT_EMAIL_TO` is **not wired** (no free email sender on this route).

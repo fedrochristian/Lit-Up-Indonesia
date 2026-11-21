@@ -21,11 +21,22 @@ console.log(`  settled ${rp(settled)} · outstanding ${rp(outstanding)} · headr
 console.log(`  alert at ${rp(config.monthlyBurnAlertIdr)}: ${month?.alert_sent_at ? `FIRED ${month.alert_sent_at}` : "not fired"}`);
 console.log(`  hard stop at ${rp(config.monthlyBurnHardStopIdr)}: ${month?.hard_stop_at ? `REACHED ${month.hard_stop_at}` : "not reached"}`);
 
-const { data: metric4, error: m4Error } = await db.rpc("metric4_trial_cost");
+const { data: metric4, error: m4Error } = await db.rpc("metric4_trial_cost", {
+  p_unit_calls: config.trialSessions * config.trialSessionMsgCap,
+  p_unit_sessions: config.trialSessions,
+});
 if (m4Error) throw m4Error;
 const p95 = Number(metric4.p95_idr);
+const above = p95 > config.costP95TrialMaxIdr;
+const reading = Number(metric4.learners) === 0 ? "no data yet" : above ? "ABOVE threshold, pause scaling" : "below threshold";
+// A reading, not a verdict: with small n (and partial units) it cannot "pass".
 console.log(
-  `Metric 4 (LIVE): p95 cost per trial ${rp(p95)} over ${metric4.trials} trial(s) vs ${rp(config.costP95TrialMaxIdr)} → ${p95 > config.costP95TrialMaxIdr ? "PAUSE SCALING" : "ok"}`,
+  `Metric 4 (LIVE): ${reading}, n = ${metric4.learners} ` +
+    `(p95 ${rp(p95)}, max ${rp(Number(metric4.max_idr))} per trial unit vs ${rp(config.costP95TrialMaxIdr)})`,
+);
+console.log(
+  `  learners ${metric4.learners}: ${metric4.full_units} full unit(s), ${metric4.partial_units} partial ` +
+    `(full = ${metric4.unit_calls} charged calls, or both trial sessions ended)`,
 );
 console.log(`Trigger 2 (conversion): ${config.triggerConversionEnabled ? "ENABLED" : "off"} (floor ${config.triggerConversionMinTrials} completed trials)`);
 console.log(`Trigger 3 (paying share of MAU): ${config.triggerMauEnabled ? "ENABLED" : "off"}`);

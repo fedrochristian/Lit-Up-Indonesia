@@ -93,8 +93,10 @@ no spend) without touching anything else.
 
 ## 5. Operating the pilot
 
-- Spend: `npm run spend:status` (month totals, alert/hard stop state, Metric 4 p95 vs
-  Rp2,800, stale reservations). `-- --settle-stale` settles reservations older than 15 min at
+- Spend: `npm run spend:status` (month totals, alert/hard stop state, stale reservations,
+  and Metric 4: "below threshold, n = X" or "ABOVE threshold, pause scaling", with p95 and
+  max per trial unit vs Rp2,800 and full vs partial units). Quote Metric 4 with its n; it is
+  a reading, not a pass. `-- --settle-stale` settles reservations older than 15 min at
   their reserved amount (conservative).
 - Deletion requests outside the app:
   `npm run account:delete -- --email someone@example.com` (dry run with counts), then
@@ -102,8 +104,9 @@ no spend) without touching anything else.
   The script and the in-app confirmation both show the WIB date and a reference
   (`LU-DEL-000123`, the `deletion_log` id) to quote back to the learner.
 - Metric 4 with `PILOT_CAPS_LIFTED=true`: nobody is in a trial, so each learner's first
-  28 Guruku calls (2 sessions x 14) are ledgered as `pilot_trial` and count as one trial
-  unit; later calls are `pilot`. `spend:status` reports the p95 over those units.
+  28 charged Guruku calls (2 sessions x 14) are ledgered as `pilot_trial` and count as one
+  trial unit; later calls are `pilot`. Released calls (provider confirmed no charge) count
+  toward neither the 28 nor the cost. `spend:status` reports the p95 over those units.
 - Hard stop at Rp5m: Guruku shows "Guruku sedang istirahat…"; Jelajahi and Belajarku keep working.
 
 ## 6. Operator alerts (`ALERT_WEBHOOK_URL`, optional, free)

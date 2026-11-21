@@ -318,7 +318,7 @@ $$;
 --              free_monthly_short_cap, pilot_daily_msg_cap
 -- Every admitted call (including a learner's retry) consumes one message.
 -- With caps lifted nobody is in a trial, so a pilot learner's first
--- trial_sessions x trial_session_msg_cap calls are ledgered as 'pilot_trial'
+-- trial_sessions x trial_session_msg_cap charged (not released) calls are ledgered as 'pilot_trial'
 -- and Metric 4 still gets one trial-sized unit per learner.
 -- ---------------------------------------------------------------------------
 
@@ -374,7 +374,8 @@ begin
       select case when count(*) < v_session_cap * v_sessions then 'pilot_trial' else 'pilot' end
         into v_ledger_kind
         from public.spend_ledger
-       where account_hash = p_account_hash and kind in ('trial', 'pilot_trial') and request_id <> p_request_id;
+       where account_hash = p_account_hash and kind in ('trial', 'pilot_trial') and status <> 'released'
+         and request_id <> p_request_id;
     end if;
     v_reserve := public.reserve_spend(p_request_id, p_account_hash, p_amount_idr, p_hard_stop_idr, v_ledger_kind, p_now);
     if not (v_reserve ->> 'ok')::boolean then
@@ -629,7 +630,7 @@ begin
   values (p_account_hash, coalesce(p_requested_at, p_now), p_now, p_method)
   returning id into v_deletion_id;
 
-  return jsonb_build_object('deletion_id', v_deletion_id, 'events', v_events, 'trial_sessions', v_sessions,
+  return jsonb_build_object('deletion_id', v_deletion_id, 'completed_at', p_now, 'events', v_events, 'trial_sessions', v_sessions,
     'usage_counters', v_counters, 'rate_limits', v_rate,
     'ledger_rows_anonymized', v_ledger, 'profiles', v_profiles);
 end;
@@ -638,27 +639,40 @@ $$;
 -- ---------------------------------------------------------------------------
 -- Metric 4 (LIVE in stealth): p95 model cost per two-session trial unit
 -- ('trial' rows, or a pilot learner's first trial-sized 'pilot_trial' rows),
--- compared with COST_P95_TRIAL_MAX_IDR by scripts/spend-status.mjs.
+-- compared with COST_P95_TRIAL_MAX_IDR by scripts/spend-status.mts.
+-- Released calls (provider confirmed no charge) count neither as calls nor cost.
+-- A unit is full at p_unit_calls charged calls (sessions x per-session cap), or
+-- when a trial learner's p_unit_sessions sessions have all ended; otherwise partial.
 -- ---------------------------------------------------------------------------
 
-create function public.metric4_trial_cost()
+create function public.metric4_trial_cost(p_unit_calls int default 28, p_unit_sessions int default 2)
 returns jsonb
 language sql
 stable
 set search_path = pg_catalog, public
 as $$
-  with per_trial as (
-    select l.account_hash, sum(coalesce(l.settled_idr, l.reserved_idr)) as cost_idr
+  with per_unit as (
+    select l.account_hash, count(*) as calls, sum(coalesce(l.settled_idr, l.reserved_idr)) as cost_idr
       from public.spend_ledger l
      where l.kind in ('trial', 'pilot_trial') and l.account_hash is not null and l.status <> 'released'
      group by l.account_hash
+  ),
+  graded as (
+    select u.cost_idr,
+           u.calls >= p_unit_calls
+             or (select count(*) from public.trial_sessions s
+                  where s.account_hash = u.account_hash and s.ended_at is not null) >= p_unit_sessions as full_unit
+      from per_unit u
   )
   select jsonb_build_object(
-    'trials', count(*),
+    'learners', count(*),
+    'full_units', count(*) filter (where full_unit),
+    'partial_units', count(*) filter (where not full_unit),
+    'unit_calls', p_unit_calls,
     'p95_idr', coalesce(percentile_cont(0.95) within group (order by cost_idr), 0),
     'max_idr', coalesce(max(cost_idr), 0)
   )
-  from per_trial
+  from graded
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -730,7 +744,7 @@ revoke execute on function
   public.guru_status(text, text, jsonb, int, bigint, timestamptz),
   public.rate_limit_hit(text, text, int, int, timestamptz),
   public.delete_account_data(text, text, timestamptz, timestamptz),
-  public.metric4_trial_cost(),
+  public.metric4_trial_cost(int, int),
   public.hook_before_user_created(jsonb)
 from public, anon, authenticated;
 
@@ -744,7 +758,7 @@ grant execute on function
   public.guru_status(text, text, jsonb, int, bigint, timestamptz),
   public.rate_limit_hit(text, text, int, int, timestamptz),
   public.delete_account_data(text, text, timestamptz, timestamptz),
-  public.metric4_trial_cost()
+  public.metric4_trial_cost(int, int)
 to service_role;
 
 grant usage on schema public to supabase_auth_admin;
