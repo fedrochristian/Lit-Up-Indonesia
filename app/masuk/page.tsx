@@ -9,13 +9,22 @@ const NOTES: Record<string, { tone: "warn" | "danger" | "ok"; text: string }> = 
   selesai: { tone: "ok", text: "Akun dan datamu sudah dihapus. Terima kasih sudah ikut menguji Lit Up." },
 };
 
+function deletionNote(ref: unknown, tgl: unknown): string {
+  const base = NOTES.selesai.text;
+  if (typeof ref !== "string" || !/^LU-DEL-\d{6,}$/.test(ref) || typeof tgl !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(tgl)) return base;
+  const day = new Date(`${tgl}T00:00:00Z`);
+  if (Number.isNaN(day.getTime())) return base;
+  const date = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(day);
+  return `Akun dan datamu sudah dihapus pada ${date} (WIB). Nomor referensi: ${ref}. Terima kasih sudah ikut menguji Lit Up.`;
+}
+
 export default async function MasukPage(props: PageProps<"/masuk">) {
   const auth = await currentLearner();
   if (auth.status === "ok") redirect("/");
 
   const params = await props.searchParams;
   const key = typeof params.galat === "string" ? params.galat : params.hapus === "selesai" ? "selesai" : "";
-  const note = NOTES[key];
+  const note = key === "selesai" ? { ...NOTES.selesai, text: deletionNote(params.ref, params.tgl) } : NOTES[key];
 
   return (
     <>

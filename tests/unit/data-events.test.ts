@@ -110,7 +110,7 @@ describe("deletion orchestration", () => {
     const counts = await deleteAccount({ userId: "u1", accountHash: "a".repeat(64) }, "in_app", {
       rpc: async <T,>(fn: string, args: Record<string, unknown>) => {
         steps.push(`${fn}:${args.p_method}`);
-        return { events: 3 } as T;
+        return { deletion_id: 42, events: 3 } as T;
       },
       deleteAuthUser: async (id) => {
         steps.push(`auth:${id}`);
@@ -118,8 +118,8 @@ describe("deletion orchestration", () => {
       logEvent: async (name, props, hash) => {
         steps.push(`${name}:${JSON.stringify(props)}:${hash}`);
       },
-    });
+    }, undefined, () => new Date("2026-11-22T17:30:00Z"));
     assert.deepEqual(steps, ["delete_account_data:in_app", "auth:u1", 'deletion_done:{"method":"in_app"}:null']);
-    assert.deepEqual(counts, { events: 3 });
+    assert.deepEqual(counts, { reference: "LU-DEL-000042", date: "2026-11-23", counts: { events: 3 } });
   });
 });

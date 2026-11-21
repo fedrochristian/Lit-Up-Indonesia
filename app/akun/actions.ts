@@ -16,8 +16,9 @@ export async function deleteMyAccount(_prev: DeleteState, formData: FormData): P
   const auth = await currentLearner();
   if (auth.status !== "ok") return { status: "error", message: "Sesi berakhir. Masuk lagi dulu." };
 
+  let done: Awaited<ReturnType<typeof deleteAccount>>;
   try {
-    await deleteAccount({ userId: auth.learner.userId, accountHash: auth.learner.accountHash }, "in_app", {
+    done = await deleteAccount({ userId: auth.learner.userId, accountHash: auth.learner.accountHash }, "in_app", {
       rpc,
       deleteAuthUser: async (userId) => {
         const { error } = await adminClient().auth.admin.deleteUser(userId);
@@ -32,5 +33,5 @@ export async function deleteMyAccount(_prev: DeleteState, formData: FormData): P
 
   const supabase = await serverClient();
   await supabase.auth.signOut();
-  redirect("/masuk?hapus=selesai");
+  redirect(`/masuk?hapus=selesai&ref=${done.reference}&tgl=${done.date}`);
 }

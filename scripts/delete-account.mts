@@ -64,4 +64,4 @@ const result = await deleteAccount(
   },
   requestedAt ? new Date(requestedAt) : undefined,
 );
-console.log("Deleted:", result);
+console.log(`Deleted on ${result.date} (WIB). Reference ${result.reference}. Rows:`, result.counts);
