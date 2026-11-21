@@ -1,12 +1,12 @@
 {
   "check": "reserve_spend concurrency",
-  "ran_at": "2026-11-21T09:44:29.600Z",
+  "ran_at": "2026-11-21T10:18:48.034Z",
   "passed": true,
-  "git_commit_at_run": "e8401a4a6add5ae93b146162c1f961662597d4ad",
+  "git_commit_at_run": "b66c39045f8316b4dc3e9e852bb68940addebf5b",
   "migrations": [
     "20261121120000_litup_pilot.sql"
   ],
-  "migrations_sha256": "80a74d0b94404de60c63833f1360b956d96fdb30f1e967279e97d3a3c8bbb671",
+  "migrations_sha256": "ed9eb04b3b6322b6bcbde9da9fbbf629f34644935d8514c585a64b72046b8114",
   "postgres": "PostgreSQL 17.12 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
   "node": "v22.23.4",
   "scenarios": [
@@ -47,8 +47,8 @@
       "other": 0,
       "cap_idr": 5000000,
       "start_total_idr": 4980000,
-      "end_total_idr": 4999985,
-      "max_observed_total_idr": 4999989,
+      "end_total_idr": 4999994,
+      "max_observed_total_idr": 4999999,
       "ledger_matches_month": true,
       "passed": true
     },

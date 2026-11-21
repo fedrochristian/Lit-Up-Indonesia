@@ -1,12 +1,12 @@
 {
   "check": "reserve_spend concurrency",
-  "ran_at": "2026-11-21T09:30:38.067Z",
+  "ran_at": "2026-11-21T10:18:46.963Z",
   "passed": true,
-  "git_commit_at_run": "e8401a4a6add5ae93b146162c1f961662597d4ad",
+  "git_commit_at_run": "b66c39045f8316b4dc3e9e852bb68940addebf5b",
   "migrations": [
     "20261121120000_litup_pilot.sql"
   ],
-  "migrations_sha256": "80a74d0b94404de60c63833f1360b956d96fdb30f1e967279e97d3a3c8bbb671",
+  "migrations_sha256": "ed9eb04b3b6322b6bcbde9da9fbbf629f34644935d8514c585a64b72046b8114",
   "postgres": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit",
   "node": "v22.23.4",
   "scenarios": [
@@ -42,13 +42,13 @@
       "name": "400 random Rp1-300 with settle/release churn, Rp20,000 headroom",
       "connections": 40,
       "attempts": 400,
-      "admitted": 260,
-      "refused_hard_stop": 140,
+      "admitted": 262,
+      "refused_hard_stop": 138,
       "other": 0,
       "cap_idr": 5000000,
       "start_total_idr": 4980000,
-      "end_total_idr": 4999987,
-      "max_observed_total_idr": 4999987,
+      "end_total_idr": 4999976,
+      "max_observed_total_idr": 4999998,
       "ledger_matches_month": true,
       "passed": true
     },
