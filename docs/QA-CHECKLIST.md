@@ -5,23 +5,34 @@ Tick each item with name, date and evidence. Unticked items block the production
 
 ## Gate items
 
-- [ ] **Condition (a): model and price.** On Google's live Gemini API pricing page, confirm
-  the model ID `gemini-3.5-flash-lite` exists and its price matches `lib/guru/pricing.ts`
-  (input USD 0.30 / 1M tokens, output incl. thinking USD 2.50 / 1M tokens). If it differs,
-  update `lib/guru/pricing.ts`; config refuses to run if the worst-case call exceeds the Rp100
-  reserve. *Not verified by the agent: needs a person and the live page.*
-- [ ] **Condition (a): PAID tier key.** In Google AI Studio, confirm the project behind
-  `GEMINI_API_KEY` has billing enabled (paid tier). *Not verified by the agent.*
-- [ ] **Guruku safety text.** Merged LU-GURU-SAFETY text from Elon pasted into
-  `lib/guru/prompt-text.ts` with `status: "final"`; AI disclosure, hard-stop and refusal
-  copy checked against it. Until then Guruku shows "Guruku belum aktif" and makes no calls.
+- [x] **Condition (a): model and price.** Model ID `gemini-3.5-flash-lite` and its price
+  (input USD 0.30 / 1M tokens, output incl. thinking USD 2.50 / 1M tokens, as in
+  `lib/guru/pricing.ts`) verified against Google's live pricing page by **Elon (CTO review of
+  PR 1, 21 Nov 2026)**. Guruku sends `thinkingLevel: MINIMAL` (Google lists only thinking levels
+  for this model). Re-check if Google changes the page before deploy.
+- [ ] **Condition (a): PAID tier key. Owner: Fedro.** In Google AI Studio, confirm the project
+  behind `GEMINI_API_KEY` has billing enabled (paid tier). *Not verified by the agent or Elon.*
+- [x] **Guruku safety text.** Elon's merged LU-GURU-SAFETY-20261121 text is in
+  `lib/guru/prompt-text.ts` with `status: "final"` (hard-stop and refusal copy included;
+  `tests/unit/guru-safety.test.ts` holds an independent copy).
 - [ ] **reserve_spend concurrency check, logged.** `TEST_DATABASE_URL=… npm run check:concurrency`
   passes and `docs/qa/reserve-concurrency-log.json` is committed for the current migration
   (preflight compares the migration hash). Parallel reservations must never exceed the cap.
-- [ ] **Condition (c): allowlist on the preview URL.** (1) An off-allowlist email on `/masuk`
-  shows the neutral message and **no email arrives**; Supabase Auth → Users shows no new user.
-  (2) Tri's test identity receives a link, opens it, lands on Jelajahi.
-  (Automated equivalent against a local Supabase stack: `npm run test:e2e`, see the file header.)
+- [ ] **Condition (c): allowlist on the preview URL** (run once the preview exists; Vercel
+  Authentication is off for previews, so the script reaches the app directly):
+
+  ```bash
+  npm run check:preview -- \
+    --url https://lit-up-indonesia-<hash>-<team-slug>.vercel.app --on-list tri@<domain>
+  ```
+
+  Uses the preview's own Supabase project (same env as the preview). It checks: the page is
+  the app's sign-in (not a Vercel login wall) and `noindex`; an off-allowlist address on `/masuk`
+  gets the neutral message and **no user is created**; the same address sent straight to the
+  Supabase Auth API is refused by the hook (HTTP 403); the `--on-list` address gets the neutral
+  message. Then, by hand: Tri opens the emailed link on her phone and lands on Jelajahi; no email
+  arrived for the off-list address (it is a non-deliverable `example.com` address by default).
+  (Local equivalent: `npm run test:e2e`.)
 - [ ] **G5 automated check.** `npm run g5:check` over all whitelist IDs; every failure is
   listed in `data/jelajahi-g5-excluded.json` (hidden, not substituted).
 - [ ] **G5 manual sample.** Play the 20 IDs in `docs/qa/g5-oembed-report.json` →
@@ -30,7 +41,7 @@ Tick each item with name, date and evidence. Unticked items block the production
 - [ ] **Deletion.** Using Tri's test identity: Akun → Hapus akun & data → type HAPUS.
   Check Supabase: user gone, `deletion_log` has a dated row, `spend_ledger` rows for it have
   no account hash. Sign in again works (fresh account).
-- [ ] **Hard stop copy** (after the safety text is in). On a preview, temporarily set
+- [ ] **Hard stop copy.** On a preview, temporarily set
   `MONTHLY_BURN_ALERT_IDR=50` and `MONTHLY_BURN_HARD_STOP_IDR=99` (below one Rp100 reserve):
   Guruku shows "Guruku sedang istirahat…", Jelajahi/Belajarku still work. Revert both.
 - [ ] **Noindex.** `curl -I <preview>/` shows `x-robots-tag: noindex, nofollow`;

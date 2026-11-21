@@ -16,7 +16,8 @@
     "spend:status": "tsx --env-file=.env.local scripts/spend-status.mts",
     "check:concurrency": "CONCURRENCY_LOG=docs/qa/reserve-concurrency-log.json node --import tsx --test tests/db/reserve-concurrency.test.ts",
     "preflight": "tsx --env-file-if-exists=.env.local scripts/preflight.mts",
-    "test:e2e": "node tests/e2e/auth-flow.mjs"
+    "test:e2e": "node tests/e2e/auth-flow.mjs",
+    "check:preview": "tsx --env-file-if-exists=.env.local scripts/check-preview-allowlist.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
