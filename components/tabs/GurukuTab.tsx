@@ -7,7 +7,7 @@ import { Icon } from "../Icon";
 
 const MAX_CHARS = 1500;
 
-type Msg = { id: number; role: "user" | "model" | "system"; text: string; retry?: string };
+type Msg = { id: number; role: "user" | "model" | "system"; text: string; sig?: string; retry?: string };
 
 export type GuruUsage =
   | { mode: "trial"; session_no: number; session_open: boolean; used: number; limit: number; sessions_used: number; trial_sessions: number; hard_stop: boolean }
@@ -15,7 +15,7 @@ export type GuruUsage =
   | { mode: "pilot"; used: number; limit: number; hard_stop: boolean };
 
 type GuruResponse =
-  | { status: "ok"; reply: string; kind: "normal" | "short" }
+  | { status: "ok"; reply: string; sig: string; kind: "normal" | "short" }
   | { status: "provider_error" }
   | { status: "rate_limited"; scope: "user" | "ip" }
   | { status: "cap"; cap: "pilot_daily" | "free_monthly" }
@@ -66,7 +66,7 @@ export function useGuruChat() {
       const history = messages
         .filter((m) => m.role !== "system")
         .slice(-12)
-        .map((m) => ({ role: m.role, text: m.text }));
+        .map((m) => (m.role === "model" ? { role: m.role, text: m.text, sig: m.sig } : { role: m.role, text: m.text }));
       push({ role: "user", text });
       setState("sending");
       let next: typeof state = "idle";
@@ -79,7 +79,7 @@ export function useGuruChat() {
         const data = (await res.json()) as GuruResponse;
         switch (data.status) {
           case "ok":
-            push({ role: "model", text: data.reply });
+            push({ role: "model", text: data.reply, sig: data.sig });
             break;
           case "provider_error":
             push({ role: "system", text: "Guruku gagal menjawab kali ini.", retry: text });

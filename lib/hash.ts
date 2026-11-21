@@ -18,6 +18,14 @@ export function ipHash(ip: string, env?: Record<string, string | undefined>): st
   return createHmac("sha256", key(env)).update(`ip:${ip}`, "utf8").digest("hex");
 }
 
+/**
+ * Signs a Guruku reply so it can come back as conversation history. Model turns
+ * without a valid signature are dropped: the browser cannot invent Guruku's words.
+ */
+export function turnSignature(accountHash: string, text: string, env?: Record<string, string | undefined>): string {
+  return createHmac("sha256", key(env)).update(`guru-turn:v1\n${accountHash}\n${text}`, "utf8").digest("base64url");
+}
+
 export function clientIp(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();

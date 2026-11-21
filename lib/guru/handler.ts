@@ -1,5 +1,6 @@
 import { capsForDb, type GuruConfig } from "../config";
 import type { EventName } from "../events";
+import { timingSafeEqual } from "node:crypto";
 import type { ChatTurn, ModelRequest, ModelResult } from "./gemini";
 import { callCostIdr } from "./pricing";
 import type { GuruPromptText } from "./prompt-text";
@@ -19,6 +20,8 @@ export type GuruDeps = {
   isWhitelisted: (videoId: string) => boolean;
   newRequestId: () => string;
   now: () => Date;
+  /** Signature over (account hash, Guruku reply) for history round-trips. */
+  signTurn: (accountHash: string, text: string) => string;
   /** Defaults to GURU_PROMPT in lib/guru/prompt-text.ts. */
   prompt?: GuruPromptText;
 };
@@ -32,7 +35,7 @@ export type GuruUsage = {
 };
 
 export type GuruOutcome =
-  | { status: "ok"; reply: string; kind: "normal" | "short"; usage: GuruUsage }
+  | { status: "ok"; reply: string; sig: string; kind: "normal" | "short"; usage: GuruUsage }
   | { status: "provider_error"; usage: GuruUsage }
   | { status: "rate_limited"; scope: "user" | "ip" }
   | { status: "cap"; cap: "pilot_daily" | "free_monthly" }
@@ -57,20 +60,40 @@ type AdmitResult = {
 
 type SettleResult = { ok: boolean; alert_fired?: boolean; settled_idr?: number; month_start?: string };
 
-/** Conservative token estimate (about 3 characters per token for Bahasa/English mixes). */
+/**
+ * Deliberately pessimistic token estimate (2 characters per token; Bahasa and
+ * English usually run 3-4), so MAX_INPUT_TOKENS works as a ceiling.
+ */
 export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 3);
+  return Math.ceil(text.length / 2);
 }
 
-export function validateHistory(raw: unknown): ChatTurn[] | null {
+function sameSig(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+/**
+ * Accepts the browser's copy of the conversation. A model turn counts only if it
+ * carries the signature Guruku issued for it; an unsigned or altered model turn
+ * is dropped together with the user turn it answered.
+ */
+export function validateHistory(raw: unknown, verify: (text: string, sig: string) => boolean): ChatTurn[] | null {
   if (raw === undefined) return [];
   if (!Array.isArray(raw)) return null;
   const turns: ChatTurn[] = [];
   for (const item of raw.slice(-MAX_HISTORY_TURNS)) {
     if (!item || typeof item !== "object") return null;
-    const { role, text } = item as Record<string, unknown>;
-    if ((role !== "user" && role !== "model") || typeof text !== "string") return null;
-    turns.push({ role, text: text.slice(0, MAX_TURN_CHARS) });
+    const { role, text, sig } = item as Record<string, unknown>;
+    if ((role !== "user" && role !== "model") || typeof text !== "string" || text.length > MAX_TURN_CHARS) return null;
+    if (role === "model") {
+      if (typeof sig !== "string" || !verify(text, sig)) {
+        if (turns.at(-1)?.role === "user") turns.pop();
+        continue;
+      }
+    }
+    turns.push({ role, text });
   }
   return turns;
 }
@@ -100,11 +123,15 @@ export async function handleGuruMessage(
   if (message.length > MAX_MESSAGE_CHARS) {
     return { status: "invalid", message: `Pertanyaan maksimal ${MAX_MESSAGE_CHARS} karakter.` };
   }
-  const history = validateHistory(input.history);
+  const history = validateHistory(input.history, (text, sig) => sameSig(deps.signTurn(input.accountHash, text), sig));
   if (!history) return { status: "invalid", message: "Riwayat percakapan tidak valid." };
 
   // Closed before any rate-limit hit or spend reservation while the safety text is a placeholder.
   if (!guruPromptReady(deps.prompt)) return { status: "unavailable", reason: "safety_text_pending" };
+  const prompts = { normal: buildSystemPrompt("normal", deps.prompt), short: buildSystemPrompt("short", deps.prompt) };
+  if (!fitTurns(prompts.normal, [], message, config.maxInputTokens) || !fitTurns(prompts.short, [], message, config.maxInputTokens)) {
+    return { status: "invalid", message: "Pertanyaan terlalu panjang. Coba dipersingkat." };
+  }
 
   const now = deps.now();
   const nowIso = now.toISOString();
@@ -182,8 +209,8 @@ export async function handleGuruMessage(
     }
   };
 
-  const system = buildSystemPrompt(kind, deps.prompt);
-  const turns = fitTurns(system, history, message, config.maxInputTokens) ?? [{ role: "user" as const, text: message }];
+  const system = prompts[kind];
+  const turns = fitTurns(system, history, message, config.maxInputTokens)!;
   const started = Date.now();
   const result = await deps.callModel({
     model: config.model,
@@ -203,6 +230,7 @@ export async function handleGuruMessage(
     } else {
       settledIdr =
         result.type === "ok" ? callCostIdr(config.model, result.usage, config.usdIdrRate) : config.perCallReserveIdr;
+
       settle = await deps.rpc<SettleResult>("settle_spend", {
         p_request_id: requestId,
         p_settled_idr: settledIdr,
@@ -217,6 +245,13 @@ export async function handleGuruMessage(
   } catch (err) {
     // The reservation stays outstanding and keeps counting toward the hard stop.
     console.error(`[guru] settlement failed for ${requestId}: ${(err as Error).message}`);
+  }
+
+  if (settledIdr > config.perCallReserveIdr) {
+    // Real cost is recorded as-is (it counts toward the hard stop); the reserve or allowances need review.
+    const detail = `request ${requestId} settled Rp${settledIdr} above the Rp${config.perCallReserveIdr} reserve (in ${tokens.tokensIn}, out ${tokens.tokensOut}, thinking ${tokens.thinkingTokens})`;
+    console.error(`[guru] over-reserve: ${detail}`);
+    await deps.alert(`Lit Up: panggilan Guruku melebihi cadangan. ${detail}`);
   }
 
   const outcome = result.type === "ok" ? (result.blocked ? "blocked" : "ok") : result.type === "http_error" ? "provider_error" : "timeout";
@@ -243,5 +278,5 @@ export async function handleGuruMessage(
 
   if (result.type !== "ok") return { status: "provider_error", usage };
   const reply = result.blocked ? SAFETY_BLOCK_MESSAGE : stripNonWhitelistLinks(result.text, deps.isWhitelisted);
-  return { status: "ok", reply, kind, usage };
+  return { status: "ok", reply, sig: deps.signTurn(input.accountHash, reply), kind, usage };
 }
