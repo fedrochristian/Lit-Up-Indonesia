@@ -27,7 +27,7 @@ Set every variable in **both Preview and Production** in Vercel
 | `ALERT_EMAIL_TO` | no | Recorded only; no email sender is wired (free route). See QA checklist. |
 | `MAX_OUTPUT_TOKENS` | no | 1024 |
 | `SHORT_RESPONSE_MAX_TOKENS` | no | 400 |
-| `THINKING_BUDGET_TOKENS` | no | 512 |
+| `THINKING_TOKENS_ALLOWANCE` | no | 512. Not sent to Google (Guruku uses `thinkingLevel: MINIMAL`); assumed thinking tokens for the Rp100 worst-case check. |
 | `MAX_INPUT_TOKENS` | no | 4000 |
 | `PER_CALL_RESERVE_IDR` | no | 100 (config refuses values below the worst-case call cost, Rp93 at defaults) |
 | `TRIAL_SESSION_MSG_CAP` | no | 14 (x 2 sessions; retries count) |

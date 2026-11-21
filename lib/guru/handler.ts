@@ -190,7 +190,7 @@ export async function handleGuruMessage(
     system,
     turns,
     maxOutputTokens: kind === "short" ? config.shortResponseMaxTokens : config.maxOutputTokens,
-    thinkingBudgetTokens: config.thinkingBudgetTokens,
+    thinkingLevel: config.thinkingLevel,
   });
   const latencyMs = Date.now() - started;
 

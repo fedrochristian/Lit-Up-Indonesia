@@ -21,7 +21,7 @@ export function worstCaseCallIdr(config: {
   model: string;
   maxInputTokens: number;
   maxOutputTokens: number;
-  thinkingBudgetTokens: number;
+  thinkingAllowanceTokens: number;
   usdIdrRate: number;
 }): number {
   return callCostIdr(
@@ -29,7 +29,7 @@ export function worstCaseCallIdr(config: {
     {
       tokensIn: config.maxInputTokens,
       tokensOut: config.maxOutputTokens,
-      thinkingTokens: config.thinkingBudgetTokens,
+      thinkingTokens: config.thinkingAllowanceTokens,
     },
     config.usdIdrRate,
   );

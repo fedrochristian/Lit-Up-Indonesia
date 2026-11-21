@@ -12,7 +12,8 @@ describe("config defaults follow MD v1.1 and ELON-REVIEW LU-MD-FINAL-20261121-15
     assert.equal(c.perCallReserveIdr, 100);
     assert.equal(c.maxOutputTokens, 1024);
     assert.equal(c.shortResponseMaxTokens, 400);
-    assert.equal(c.thinkingBudgetTokens, 512);
+    assert.equal(c.thinkingLevel, "MINIMAL");
+    assert.equal(c.thinkingAllowanceTokens, 512);
     assert.equal(c.maxInputTokens, 4000);
   });
 

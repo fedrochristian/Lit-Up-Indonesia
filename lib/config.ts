@@ -24,7 +24,10 @@ export function readGuruConfig(env: Env = process.env) {
     model: (env.GEMINI_MODEL ?? "").trim() || "gemini-3.5-flash-lite",
     maxOutputTokens: int(env, "MAX_OUTPUT_TOKENS", 1024),
     shortResponseMaxTokens: int(env, "SHORT_RESPONSE_MAX_TOKENS", 400),
-    thinkingBudgetTokens: int(env, "THINKING_BUDGET_TOKENS", 512),
+    thinkingLevel: "MINIMAL" as const,
+    // A thinking level has no token cap; this allowance only feeds the Rp100 worst-case check.
+    // Settles above the reserve raise an alert, which is how a wrong allowance shows up.
+    thinkingAllowanceTokens: int(env, "THINKING_TOKENS_ALLOWANCE", 512),
     maxInputTokens: int(env, "MAX_INPUT_TOKENS", 4000),
     perCallReserveIdr: int(env, "PER_CALL_RESERVE_IDR", 100),
     trialSessionMsgCap: int(env, "TRIAL_SESSION_MSG_CAP", 14),

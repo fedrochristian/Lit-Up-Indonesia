@@ -1,11 +1,14 @@
 export type ChatTurn = { role: "user" | "model"; text: string };
 
+/** Values of `ThinkingLevel` in @google/genai 3.6.1 that we allow; Google lists only levels for gemini-3.5-flash-lite. */
+export type ThinkingLevel = "MINIMAL" | "LOW";
+
 export type ModelRequest = {
   model: string;
   system: string;
   turns: ChatTurn[];
   maxOutputTokens: number;
-  thinkingBudgetTokens: number;
+  thinkingLevel: ThinkingLevel;
 };
 
 export type ModelResult =
@@ -42,7 +45,7 @@ export function buildGeminiBody(req: ModelRequest) {
     generationConfig: {
       maxOutputTokens: req.maxOutputTokens,
       temperature: 0.7,
-      thinkingConfig: { thinkingBudget: req.thinkingBudgetTokens },
+      thinkingConfig: { thinkingLevel: req.thinkingLevel },
     },
     safetySettings: SAFETY_SETTINGS,
   };

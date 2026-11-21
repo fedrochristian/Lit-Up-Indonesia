@@ -118,14 +118,14 @@ describe("Gemini request shape", () => {
     system: "sys",
     turns: [{ role: "user" as const, text: "halo" }],
     maxOutputTokens: 400,
-    thinkingBudgetTokens: 512,
+    thinkingLevel: "MINIMAL" as const,
   };
 
   test("no tools or grounding, capped output and thinking, strict safety settings", () => {
     const body = buildGeminiBody(req);
     assert.equal("tools" in body, false);
     assert.equal(body.generationConfig.maxOutputTokens, 400);
-    assert.equal(body.generationConfig.thinkingConfig.thinkingBudget, 512);
+    assert.deepEqual(body.generationConfig.thinkingConfig, { thinkingLevel: "MINIMAL" });
     assert.equal(body.safetySettings.length, 4);
     assert.ok(body.safetySettings.every((s) => s.threshold === "BLOCK_LOW_AND_ABOVE"));
   });

@@ -112,7 +112,7 @@ describe("Guruku request pipeline", () => {
     const req = h.modelCalls[0];
     assert.equal(req.model, "gemini-3.5-flash-lite");
     assert.equal(req.maxOutputTokens, 1024);
-    assert.equal(req.thinkingBudgetTokens, 512);
+    assert.equal(req.thinkingLevel, "MINIMAL");
     assert.ok(req.system.includes("LU-GURU-SAFETY-TEST:\nAturan uji: arahkan setiap topik kembali ke belajar."));
     assert.deepEqual(req.turns, [{ role: "user", text: "Apa itu fotosintesis?" }]);
   });
